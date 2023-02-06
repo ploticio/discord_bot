@@ -1,8 +1,5 @@
 import discord
-import json
-
-with open("config.json", "r") as f:
-    config = json.load(f)
+import config
 
 def run_bot():
     intents = discord.Intents.default()
@@ -21,8 +18,13 @@ def run_bot():
 
         p_message = message.content.lower()
 
-        if p_message == "hello":
-            await message.channel.send("bonjour")
+        ### WORD COUNTER ###
+        if p_message == "$count":
+            await message.channel.send("Counting frogs...")
+            for channel in message.guild.text_channels:
+                messages = [m async for m in channel.history() if message.author == m.author]
+                for m in messages:
+                    if "frog" in m.content:
+                        counter += 1
 
-
-    client.run(config['token'])
+    client.run(config.TOKEN)
