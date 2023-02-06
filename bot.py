@@ -1,30 +1,28 @@
-import discord
 import config
+import discord
+from discord.ext import commands
 
 def run_bot():
-    intents = discord.Intents.default()
-    intents.message_content = True
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
-    client = discord.Client(intents=intents)
-
-    @client.event
+    @bot.event
     async def on_ready():
-        print(f"{client.user} is now running")
+        print(f"{bot.user} is now running")
 
-    @client.event
-    async def on_message(message):
-        if message.author == client.user:
-            return
-
-        p_message = message.content.lower()
-
-        ### WORD COUNTER ###
-        if p_message == "$count":
-            await message.channel.send("Counting frogs...")
-            for channel in message.guild.text_channels:
-                messages = [m async for m in channel.history() if message.author == m.author]
+    @bot.command()
+    async def hello(ctx, user: discord.User):
+        await ctx.send(f"Hello there {user.mention}")
+    
+    @bot.command()
+    async def count(ctx, user: discord.User):
+        counter = 0
+        await ctx.send("Counting words...")
+        for channel in ctx.guild.text_channels:
+                messages = [message async for message in channel.history() if m.author == user]
                 for m in messages:
-                    if "frog" in m.content:
+                    if "frog" in m.content.lower():
                         counter += 1
+        
+        await ctx.send(f"Number of frogs detected: {counter}")
 
-    client.run(config.TOKEN)
+    bot.run(config.TOKEN)
