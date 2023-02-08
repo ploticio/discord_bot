@@ -22,7 +22,7 @@ def run_bot():
                 if re.search(r'\b%s\b' % word, message.content.lower()):
                     await message.add_reaction("🤨")
                     await message.add_reaction("📸")
-                    await message.reply(f"WOAH 😱😱😱 {message.guild.owner.mention} {message.guild.owner.mention} {message.guild.owner.mention}")
+                    await message.reply(f"🚨 WOAH 🚨 😱😱😱 {message.guild.owner.mention} {message.guild.owner.mention} {message.guild.owner.mention}")
 
         await bot.process_commands(message)
 
@@ -31,7 +31,7 @@ def run_bot():
         await ctx.send(f"Hello there {user.mention}")
     
     @bot.command()
-    async def count(ctx, user: discord.User):
+    async def bad(ctx, user: discord.User):
         final_count = {word: 0 for word in config.NAUGHTY_WORDS}
 
         # Text history read in as JSON
@@ -63,20 +63,24 @@ def run_bot():
                     continue
 
         for key in final_count:
-            msg = await ctx.send(f"Number of {key} detected: {final_count[key]}")
-            if final_count[key] == 1:
-                await msg.add_reaction("🤨")
-            elif final_count[key] > 1 and final_count[key] < 10:
-                await msg.add_reaction("🤨")
-                await msg.add_reaction("📸")
-            elif final_count[key] >= 10 and final_count[key] < 15:
-                await msg.add_reaction("💀")
-            else:
-                await msg.add_reaction("😱")
-                await msg.add_reaction("🇧")
-                await msg.add_reaction("🇷")
-                await msg.add_reaction("🇴")
+            await ctx.send(f"{user.mention} has said {key} {final_count[key]} times")
 
+        msg = ctx.channel.last_message
+        num = max(final_count.values())
+        if num == 0:
+            await msg.add_reaction("👍")
+        elif num == 1:
+            await msg.add_reaction("🤨")
+        elif num > 1 and num < 10:
+            await msg.add_reaction("🤨")
+            await msg.add_reaction("📸")
+        elif num >= 10 and num < 15:
+            await msg.add_reaction("💀")
+        else:
+            await msg.add_reaction("😱")
+            await msg.add_reaction("🇧")
+            await msg.add_reaction("🇷")
+            await msg.add_reaction("🇴")
         
 
     bot.run(config.TOKEN)
