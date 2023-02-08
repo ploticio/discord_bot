@@ -127,3 +127,7 @@ dmypy.json
 # config
 config.json
 config.py
+
+# data
+data/
+*.csv
