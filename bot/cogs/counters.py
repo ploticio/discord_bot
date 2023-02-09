@@ -3,7 +3,6 @@ from discord.ext import commands
 import config
 import json
 import re
-import os
 
 class Counters(commands.Cog):
     
@@ -47,8 +46,8 @@ class Counters(commands.Cog):
     # Text history read in as JSON
     async def _read_prior(self, ctx, user, words, counts) -> None:
         await ctx.send("Reading history...")
-        for filename in os.listdir("data/"):
-            with open(os.path.join("data/", filename), "r") as f:
+        for filename in config.DATA_DIR.glob("*.json"):
+            with open(config.DATA_DIR / filename, "r") as f:
                 data = json.load(f)
             for subdict in data['messages']:
                 if subdict['author']['id'] == str(user.id): 

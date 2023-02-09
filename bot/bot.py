@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from cogs.counters import Counters
 import config
 
 def run_bot():
