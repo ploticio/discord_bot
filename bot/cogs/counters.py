@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import sqlite3
 import config
 import json
 import re
@@ -8,6 +9,14 @@ class Counters(commands.Cog):
     
     def __init__(self, bot) -> None:
         self.bot = bot
+        for filename in config.DATA_DIR.glob("*.json"):
+            with open(config.DATA_DIR / filename, "r") as f:
+                print(f"Reading chat history as JSON: {filename}")
+                self.data = json.load(f)
+
+        self.connection = sqlite3.connect(config.DATA_DIR / "leaderboard.db")
+        self.cursor = self.connection.cursor()
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS leaderboard(author TEXT PRIMARY KEY, score TEXT)")
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -19,7 +28,7 @@ class Counters(commands.Cog):
                 if re.search(r'\b%s\b' % word, message.content.lower()):
                     await message.add_reaction("🤨")
                     await message.add_reaction("📸")
-                    await message.reply(f"🚨 WOAH 🚨 😱😱😱")
+                    await message.reply("🚨 WOAH 🚨 😱😱😱")
 
     @commands.command()
     async def bad(self, ctx, user: discord.User):
@@ -27,6 +36,10 @@ class Counters(commands.Cog):
         
         await self._read_prior(ctx, user, config.NAUGHTY_WORDS, final_count)
         await self._read_current(ctx, user, config.NAUGHTY_WORDS, final_count)
+
+        self.cursor.execute(f"INSERT OR IGNORE INTO leaderboard(author, score) VALUES ({user.id}, {max(final_count.values())})")
+        self.cursor.execute(f"UPDATE leaderboard SET score={max(final_count.values())} WHERE author={user.id}")
+        self.connection.commit()
         
         for key in final_count:
             await ctx.send(f"{user.mention} has said {key} {final_count[key]} times")
@@ -43,22 +56,34 @@ class Counters(commands.Cog):
 
         await ctx.send(f"{user.mention} has said {', '.join(args)} {sum(final_count.values())} times")
 
+    @commands.command()
+    async def leaderboard(self, ctx):
+        # self.cursor.execute("SELECT MAX(score) FROM leaderboard")
+        # await ctx.send(f"Max score: {self.cursor.fetchone()[0]}")
+
+        self.cursor.execute("SELECT author, score FROM leaderboard ORDER BY 1 ASC LIMIT 3")
+        leaders = self.cursor.fetchall()
+        msg = "NAUGHTY WORD LEADERBOARD\n"
+        for i in range(len(leaders)):
+            msg += f"<@{leaders[i][0]}>: {leaders[i][1]}"
+            if i == 0: msg += "🥇"
+            elif i == 1: msg += "🥈"
+            else: msg += "🥉"
+            if i != 2: msg += "\n"
+        await ctx.send(msg)
+
     # Text history read in as JSON
     async def _read_prior(self, ctx, user, words, counts) -> None:
-        await ctx.send("Reading history...")
-        for filename in config.DATA_DIR.glob("*.json"):
-            with open(config.DATA_DIR / filename, "r") as f:
-                data = json.load(f)
-            for subdict in data['messages']:
-                if subdict['author']['id'] == str(user.id): 
-                    for key in words:
-                        for word in words[key]:
-                            found = len(re.findall(r'\b%s\b' % word, subdict['content'].lower()))
-                            if found > 0:
-                                counts[key] += found
+        for subdict in self.data['messages']:
+            if subdict['author']['id'] == str(user.id): 
+                for key in words:
+                    for word in words[key]:
+                        found = len(re.findall(r'\b%s\b' % word, subdict['content'].lower()))
+                        if found > 0:
+                            counts[key] += found
 
     # Most recent messages
-    async def _read_current(self, ctx, user, words, counts):
+    async def _read_current(self, ctx, user, words, counts) -> None:
         for channel in ctx.guild.text_channels:
             try:
                 messages = [message async for message in channel.history(limit=200) 
@@ -74,7 +99,7 @@ class Counters(commands.Cog):
                 continue
     
     # Adds reactions based on count
-    async def _add_reacts(self, ctx, count):
+    async def _add_reacts(self, ctx, count) -> None:
         msg = ctx.channel.last_message
         num = max(count.values())
         if num == 0:
