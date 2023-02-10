@@ -9,10 +9,13 @@ class Counters(commands.Cog):
     
     def __init__(self, bot) -> None:
         self.bot = bot
+        self.data = []
         for filename in config.DATA_DIR.glob("*.json"):
             with open(config.DATA_DIR / filename, "r") as f:
                 print(f"Reading chat history as JSON: {filename}")
-                self.data = json.load(f)
+                d = json.load(f)
+                for subdict in d['messages']:
+                    self.data.append((subdict['author']['id'], subdict['content']))
 
         self.connection = sqlite3.connect(config.DATA_DIR / "leaderboard.db")
         self.cursor = self.connection.cursor()
@@ -58,9 +61,6 @@ class Counters(commands.Cog):
 
     @commands.command()
     async def leaderboard(self, ctx):
-        # self.cursor.execute("SELECT MAX(score) FROM leaderboard")
-        # await ctx.send(f"Max score: {self.cursor.fetchone()[0]}")
-
         self.cursor.execute("SELECT author, score FROM leaderboard ORDER BY 1 ASC LIMIT 3")
         leaders = self.cursor.fetchall()
         msg = "NAUGHTY WORD LEADERBOARD\n"
@@ -74,11 +74,11 @@ class Counters(commands.Cog):
 
     # Text history read in as JSON
     async def _read_prior(self, ctx, user, words, counts) -> None:
-        for subdict in self.data['messages']:
-            if subdict['author']['id'] == str(user.id): 
+        for messages in self.data:
+            if messages[0] == str(user.id):
                 for key in words:
                     for word in words[key]:
-                        found = len(re.findall(r'\b%s\b' % word, subdict['content'].lower()))
+                        found = len(re.findall(r'\b%s\b' % word, messages[1].lower()))
                         if found > 0:
                             counts[key] += found
 
